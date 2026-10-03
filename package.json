@@ -1,0 +1,18 @@
+{
+  "name": "afinador",
+  "version": "1.0.0",
+  "description": "Afinador de violão simples, sem anúncios, que funciona no navegador do celular (PWA).",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "test:browser": "node tools/teste-navegador.mjs",
+    "serve": "node tools/servidor.mjs",
+    "icons": "node tools/gerar-icones.mjs"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.12.0",
+    "sharp": "^0.35.5"
+  }
+}

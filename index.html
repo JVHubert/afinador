@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Afinador</title>
+  <meta name="description" content="Afinador de violão simples e sem anúncios.">
+  <meta name="theme-color" content="#0f1115">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app" class="silencio">
+    <section class="leitura" aria-live="polite">
+      <div id="nota" class="nota">–</div>
+      <div id="corda" class="corda">Toque uma corda</div>
+    </section>
+
+    <section class="medidor" aria-hidden="true">
+      <div class="regua">
+        <span class="faixa-ok"></span>
+        <span class="marca m-50"></span><span class="marca m-25"></span>
+        <span class="marca m0"></span>
+        <span class="marca m25"></span><span class="marca m50"></span>
+        <span id="ponteiro" class="ponteiro"></span>
+      </div>
+      <div class="legenda"><span>grave</span><span>agudo</span></div>
+    </section>
+
+    <div id="instrucao" class="instrucao">&nbsp;</div>
+
+    <ol id="cordas" class="cordas" aria-label="Cordas do violão">
+      <li data-num="6">E</li><li data-num="5">A</li><li data-num="4">D</li>
+      <li data-num="3">G</li><li data-num="2">B</li><li data-num="1">E</li>
+    </ol>
+
+    <div id="inicio" class="inicio">
+      <h1>Afinador</h1>
+      <p>Afinação padrão: E A D G B E</p>
+      <button id="comecar" type="button">Começar a afinar</button>
+      <p id="erro" class="erro" hidden></p>
+    </div>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
