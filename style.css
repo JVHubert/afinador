@@ -117,7 +117,52 @@ main.esmaecido .instrucao { opacity: .35; }
   color: var(--apagado);
   transition: all .2s;
 }
+.cordas li { position: relative; }
+.cordas li.feita { border-color: var(--ok); color: var(--ok); }
+.cordas li.feita::after {
+  content: "✓";
+  position: absolute; top: -6px; right: -6px;
+  width: 20px; height: 20px;
+  display: grid; place-items: center;
+  font-size: 13px;
+  border-radius: 50%;
+  background: var(--ok); color: var(--fundo);
+}
 .cordas li.ativa { border-color: var(--cor); color: var(--fundo); background: var(--cor); }
+.progresso { font-size: 16px; color: var(--apagado); margin-top: -12px; min-height: 1.2em; }
+
+/* Confirmação final: violão inteiro afinado */
+.sucesso {
+  position: absolute; inset: 0;
+  background: var(--fundo);
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  gap: 16px;
+  padding: 24px 16px;
+  animation: aparecer .35s ease-out;
+}
+.sucesso[hidden] { display: none; }
+.sucesso .selo {
+  width: min(48vw, 200px); aspect-ratio: 1;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--ok); color: var(--fundo);
+  font-size: min(28vw, 120px); font-weight: 700;
+  animation: pulsar .6s ease-out .1s both;
+}
+.sucesso h2 { font-size: clamp(30px, 9vw, 40px); color: var(--ok); }
+.sucesso p { font-size: 18px; color: var(--apagado); }
+.sucesso button {
+  margin-top: 16px;
+  font: inherit; font-size: 20px; font-weight: 600;
+  padding: 16px 32px;
+  border: 2px solid var(--linha); border-radius: 14px;
+  background: transparent; color: var(--texto);
+  cursor: pointer;
+}
+@keyframes aparecer { from { opacity: 0; } }
+@keyframes pulsar { 0% { transform: scale(.4); } 70% { transform: scale(1.08); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .sucesso, .sucesso .selo { animation: none; } }
 
 /* Tela inicial (antes de liberar o microfone) */
 .inicio {

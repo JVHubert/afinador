@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { STRINGS, Tuner, cents, nearestString } from '../tuner.js';
+import { Progresso, STRINGS, Tuner, cents, corrigirOitava, nearestString } from '../tuner.js';
 
 const at = (s, offset) => s.freq * 2 ** (offset / 1200);
 const [E2, A2, D3, G3, B3, E4] = STRINGS;
@@ -67,4 +67,55 @@ test('esmaece sem som e volta ao repouso', () => {
 
 test('cents', () => {
   assert.ok(Math.abs(cents(440 * 2 ** (1 / 12), 440) - 100) < 1e-9);
+});
+
+test('corrige erro de oitava do Mi grave (aparecia como Ré, afrouxe)', () => {
+  for (const offset of [-75, -40, 0, 40, 75]) {
+    const f = corrigirOitava(2 * at(E2, offset));
+    assert.ok(Math.abs(cents(f, at(E2, offset))) < 0.01, `${offset}¢`);
+  }
+  const t = new Tuner();
+  for (let ms = 0; ms <= 600; ms += 40) t.push(2 * at(E2, -15), ms);
+  const r = t.snapshot(600);
+  assert.equal(r.string, E2);
+  assert.equal(r.state, 'aperte');
+  assert.ok(Math.abs(r.cents + 15) < 1);
+});
+
+test('correção de oitava não mexe em cordas afinadas ou pouco desafinadas', () => {
+  for (const s of STRINGS) {
+    for (const offset of [-90, -40, 0, 40, 90]) {
+      const f = at(s, offset);
+      assert.equal(corrigirOitava(f), f, `${s.name} ${offset}¢`);
+    }
+  }
+});
+
+test('progresso: marca cordas afinadas e avisa quando o violão inteiro fica afinado', () => {
+  const p = new Progresso();
+  const afinado = (s) => ({ state: 'afinado', string: s, cents: 0, stale: false });
+  let ms = 0;
+  for (const s of STRINGS.slice(0, 5)) {
+    const ev = p.update(afinado(s), ms += 100);
+    assert.equal(ev.cordaAfinada, s.num);
+    assert.equal(ev.violaoAfinado, false);
+  }
+  assert.equal(p.update(afinado(E2), ms += 100).cordaAfinada, null); // já marcada
+  const fim = p.update(afinado(E4), ms += 100);
+  assert.deepEqual(fim, { cordaAfinada: 1, violaoAfinado: true });
+  assert.equal(p.update(afinado(E4), ms += 100).violaoAfinado, false); // avisa uma vez só
+});
+
+test('progresso: corda que desafina de novo perde a marca', () => {
+  const p = new Progresso();
+  p.update({ state: 'afinado', string: G3, cents: 1, stale: false }, 0);
+  const fora = { state: 'aperte', string: G3, cents: -20, stale: false };
+  p.update(fora, 100);
+  p.update(fora, 500);
+  assert.ok(p.afinadas.has(3), 'desafinada por pouco tempo (ataque da palhetada) mantém a marca');
+  p.update(fora, 1000);
+  assert.ok(!p.afinadas.has(3));
+  // Leitura esmaecida não conta.
+  p.update({ state: 'afinado', string: A2, cents: 0, stale: true }, 1100);
+  assert.ok(!p.afinadas.has(5));
 });

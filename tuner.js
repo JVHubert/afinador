@@ -28,6 +28,19 @@ export function nearestString(freq, current = null, hysteresis = 40) {
   return best;
 }
 
+/**
+ * O dobro da frequência de uma corda nunca cai perto de outra corda (fica a
+ * 200¢ ou mais). Então uma leitura longe de todas as cordas, cuja metade cai
+ * numa corda, é erro de oitava do detector (comum no Mi grave pelo microfone
+ * do celular). Custo: uma corda desafinada em mais de ~1 semitom pode ser
+ * confundida com outra mais grave, o que na prática só acontece ao trocar cordas.
+ */
+export function corrigirOitava(freq, longe = 120, perto = 80) {
+  if (Math.abs(cents(freq, nearestString(freq).freq)) <= longe) return freq;
+  const metade = freq / 2;
+  return Math.abs(cents(metade, nearestString(metade).freq)) <= perto ? metade : freq;
+}
+
 const median = (arr) => {
   const s = [...arr].sort((x, y) => x - y);
   const mid = s.length >> 1;
@@ -67,7 +80,7 @@ export class Tuner {
 
     if (now - this.lastHeard > this.gapMs) this.history = [];
     this.lastHeard = now;
-    this.history.push(freq);
+    this.history.push(corrigirOitava(freq));
     if (this.history.length > this.historySize) this.history.shift();
 
     const f = median(this.history);
@@ -105,5 +118,51 @@ export class Tuner {
     else if (Math.abs(this.displayCents) <= this.inTuneCents) state = 'quase';
     else state = this.displayCents < 0 ? 'aperte' : 'afrouxe';
     return { state, string: this.string, cents: this.displayCents, stale: since > this.staleMs };
+  }
+}
+
+/**
+ * Acompanha quais cordas já ficaram afinadas para dar a confirmação final.
+ * Uma corda marcada perde a marca se voltar a soar desafinada por um tempo
+ * (afinar uma corda mexe na tensão do braço e pode desafinar as outras).
+ */
+export class Progresso {
+  constructor({ perdeCents = 10, perdeMs = 800 } = {}) {
+    Object.assign(this, { perdeCents, perdeMs });
+    this.reset();
+  }
+
+  reset() {
+    this.afinadas = new Set();
+    this.foraDesde = new Map();
+    this.completo = false;
+  }
+
+  /**
+   * @param {ReturnType<Tuner['snapshot']>} leitura
+   * @returns {{ cordaAfinada: number|null, violaoAfinado: boolean }} eventos novos desta leitura
+   */
+  update({ state, string, cents: c, stale }, now) {
+    const eventos = { cordaAfinada: null, violaoAfinado: false };
+    if (!string || stale) return eventos;
+    const num = string.num;
+
+    if (state === 'afinado') {
+      this.foraDesde.delete(num);
+      if (!this.afinadas.has(num)) {
+        this.afinadas.add(num);
+        eventos.cordaAfinada = num;
+        if (this.afinadas.size === STRINGS.length && !this.completo) {
+          this.completo = true;
+          eventos.violaoAfinado = true;
+        }
+      }
+    } else if (Math.abs(c) > this.perdeCents) {
+      if (!this.foraDesde.has(num)) this.foraDesde.set(num, now);
+      if (now - this.foraDesde.get(num) >= this.perdeMs) this.afinadas.delete(num);
+    } else {
+      this.foraDesde.delete(num);
+    }
+    return eventos;
   }
 }

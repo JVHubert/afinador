@@ -1,5 +1,5 @@
 import { detectPitch } from './pitch.js';
-import { Tuner } from './tuner.js';
+import { Progresso, STRINGS, Tuner } from './tuner.js';
 
 const ANALYSIS_MS = 40; // ~25 leituras por segundo
 
@@ -11,6 +11,8 @@ const instrucaoEl = $('instrucao');
 const ponteiroEl = $('ponteiro');
 const inicioEl = $('inicio');
 const erroEl = $('erro');
+const progressoEl = $('progresso');
+const sucessoEl = $('sucesso');
 const cordaEls = [...document.querySelectorAll('#cordas li')];
 
 const INSTRUCAO = {
@@ -21,6 +23,7 @@ const INSTRUCAO = {
 };
 
 const tuner = new Tuner();
+const progresso = new Progresso();
 let audio = null;       // { ctx, stream, analyser, buf }
 let rafId = 0;
 let lastAnalysis = 0;
@@ -80,7 +83,42 @@ function loop(now) {
   lastAnalysis = now;
   audio.analyser.getFloatTimeDomainData(audio.buf);
   const r = detectPitch(audio.buf, audio.ctx.sampleRate);
-  render(tuner.push(r ? r.freq : null, now));
+  const leitura = tuner.push(r ? r.freq : null, now);
+  render(leitura);
+
+  const { cordaAfinada, violaoAfinado } = progresso.update(leitura, now);
+  if (cordaAfinada) navigator.vibrate?.(80);
+  if (violaoAfinado) comemorar();
+  renderProgresso();
+}
+
+function renderProgresso() {
+  const n = progresso.afinadas.size;
+  cordaEls.forEach((li) => li.classList.toggle('feita', progresso.afinadas.has(Number(li.dataset.num))));
+  progressoEl.textContent = n ? `${n} de ${STRINGS.length} cordas afinadas` : ' ';
+}
+
+function comemorar() {
+  sucessoEl.hidden = false;
+  navigator.vibrate?.([120, 80, 120, 80, 250]);
+  tocarAcorde();
+}
+
+/** Arpejo curto de Mi maior: um "pronto!" para quem está olhando o violão, não a tela. */
+function tocarAcorde() {
+  const ctx = audio?.ctx;
+  if (!ctx) return;
+  [329.63, 415.3, 493.88, 659.25].forEach((freq, i) => {
+    const inicio = ctx.currentTime + i * 0.12;
+    const osc = new OscillatorNode(ctx, { type: 'sine', frequency: freq });
+    const volume = new GainNode(ctx, { gain: 0 });
+    volume.gain.setValueAtTime(0, inicio);
+    volume.gain.linearRampToValueAtTime(0.18, inicio + 0.02);
+    volume.gain.exponentialRampToValueAtTime(0.001, inicio + 0.9);
+    osc.connect(volume).connect(ctx.destination);
+    osc.start(inicio);
+    osc.stop(inicio + 1);
+  });
 }
 
 function render({ state, string, cents, stale }) {
@@ -133,6 +171,12 @@ async function tentarIniciar() {
 }
 
 $('comecar').addEventListener('click', tentarIniciar);
+$('de-novo').addEventListener('click', () => {
+  progresso.reset();
+  tuner.reset();
+  sucessoEl.hidden = true;
+  renderProgresso();
+});
 
 // Ao sair do app, desliga o microfone; ao voltar, religa.
 document.addEventListener('visibilitychange', () => {

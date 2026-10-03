@@ -1,6 +1,6 @@
 // Guarda todos os arquivos no aparelho para o afinador funcionar sem internet.
 // Aumente a versão a cada publicação para os celulares baixarem a nova.
-const VERSAO = 'afinador-v1';
+const VERSAO = 'afinador-v2';
 const ARQUIVOS = [
   './',
   'index.html',

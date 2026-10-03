@@ -12,6 +12,8 @@ export function detectPitch(buf, sampleRate, {
   threshold = 0.12, // limiar do YIN: menor = mais exigente
   minRms = 0.01,    // abaixo disso consideramos silêncio
   maxAperiodicity = 0.35,
+  subOctaveRatio = 0.5, // vale em 2τ precisa ser 2× mais fundo para trocar…
+  subOctaveMargin = 0.01, // …e por uma diferença real, não só ruído perto de zero
 } = {}) {
   const n = buf.length;
 
@@ -53,6 +55,15 @@ export function detectPitch(buf, sampleRate, {
     let best = tauMin;
     for (let t = tauMin + 1; t <= tauMax; t++) if (cmnd[t] < cmnd[best]) best = t;
     tau = best;
+  }
+
+  // Erro de oitava: no Mi grave o microfone do celular quase apaga a
+  // fundamental, e o vale do 2º harmônico (em τ) passa no limiar. Se houver
+  // um vale bem mais fundo em ~2τ, aquele é o período verdadeiro.
+  if (2 * tau + 2 <= tauMax) {
+    let sub = 2 * tau - 2;
+    for (let t = sub + 1; t <= 2 * tau + 2; t++) if (cmnd[t] < cmnd[sub]) sub = t;
+    if (cmnd[sub] < cmnd[tau] * subOctaveRatio && cmnd[tau] - cmnd[sub] > subOctaveMargin) tau = sub;
   }
   if (cmnd[tau] > maxAperiodicity) return null;
 
